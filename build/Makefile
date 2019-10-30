@@ -79,7 +79,7 @@ liboorb: ../lib/liboorb.$(LIBEXT) ../lib/liboorb.a
 LIBOBJECTS=$(notdir ${LIBSOURCES:.f90=.o})
 ../lib/liboorb.$(LIBEXT): $(LIBOBJECTS)
 	mkdir -p ../lib
-	$(FC) $(FCOPTIONS) $(FC_SHARED) $(LIBOBJECTS) -o $@
+	$(FC) $(FCOPTIONS) $(FC_SHARED) $(LIBOBJECTS) $(ADDLIBS) -o $@
 
 ../lib/liboorb.a: $(LIBOBJECTS)
 	mkdir -p ../lib

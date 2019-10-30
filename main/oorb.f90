@@ -158,7 +158,7 @@ PROGRAM oorb
   CHARACTER(len=256) :: &
        flavor, &
        frmt, &
-       str, &
+       cstr, &
        suffix, &
        task
   CHARACTER(len=64) :: &
@@ -2104,16 +2104,16 @@ PROGRAM oorb
               END IF
            END IF
 
-           CALL toString(dt, str, error, frmt="(F10.2)")
+           CALL toString(dt, cstr, error, frmt="(F10.2)")
            IF (error) THEN
               CALL errorMessage("oorb / ranging ", &
                    "TRACE BACK (165)", 1)
               STOP
            END IF
-           str = TRIM(id) // "_"// TRIM(str)
+           cstr = TRIM(id) // "_"// TRIM(cstr)
            ! WRITE RANGING OUTPUT FILE WITH
            CALL NEW(out_file, TRIM(id) // ".sor")
-           !           CALL NEW(out_file, TRIM(str) // ".sor")
+           !           CALL NEW(out_file, TRIM(cstr) // ".sor")
            CALL OPEN(out_file)
            IF (error) THEN
               CALL errorMessage("oorb / ranging", &
@@ -2173,7 +2173,7 @@ PROGRAM oorb
            END IF
            IF (separately) THEN
               CALL NEW(out_file, TRIM(id) // ".orb")
-              !              CALL NEW(out_file, TRIM(str) // ".orb")
+              !              CALL NEW(out_file, TRIM(cstr) // ".orb")
               CALL OPEN(out_file)
               IF (error) THEN
                  CALL errorMessage("oorb / ranging", &
@@ -2284,16 +2284,16 @@ PROGRAM oorb
 
            ! MAKE PLOTS
            IF (plot_results) THEN
-              CALL toString(dt, str, error, frmt="(F10.2)")
+              CALL toString(dt, cstr, error, frmt="(F10.2)")
               IF (error) THEN
                  CALL errorMessage("oorb / ranging ", &
                       "TRACE BACK (165)", 1)
                  STOP
               END IF
-              str = TRIM(id) // "_"// TRIM(str)
-              CALL makeResidualStamps(storb, obss_sep(i), TRIM(str) // &
+              cstr = TRIM(id) // "_"// TRIM(cstr)
+              CALL makeResidualStamps(storb, obss_sep(i), TRIM(cstr) // &
                    "_ranging_residual_stamps.eps")
-              !CALL makeResidualStamps(storb, obss_sep(i), TRIM(str) // &
+              !CALL makeResidualStamps(storb, obss_sep(i), TRIM(cstr) // &
               !     "_" // TRIM(flavor) //"_residual_stamps.eps")
               IF (error) THEN
                  CALL errorMessage("oorb / ranging", &
@@ -2301,10 +2301,10 @@ PROGRAM oorb
                  STOP
               END IF
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_ranging_residual_stamps.eps")
+                 CALL system("gzip -f " // TRIM(cstr) // "_ranging_residual_stamps.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_ranging_residual_stamps.eps* &")
+                 CALL system("gv " // TRIM(cstr) // "_ranging_residual_stamps.eps* &")
               END IF
               ALLOCATE(elements_arr(SIZE(orb_arr_cmp,dim=1),7), stat=err)
               IF (err /= 0) THEN
@@ -2336,14 +2336,14 @@ PROGRAM oorb
               DEALLOCATE(histo1,histo2, stat=err)
               CALL NULLIFY(tmp_file)
 
-              CALL NEW(tmp_file, TRIM(str)// "_ranging_orbits.out")
+              CALL NEW(tmp_file, TRIM(cstr)// "_ranging_orbits.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
                  CALL errorMessage("oorb / ranging ", &
                       "TRACE BACK (175)", 1)
                  STOP
               END IF
-              CALL NEW(tmp_file2, TRIM(str)// "_ranging_ranges.out")
+              CALL NEW(tmp_file2, TRIM(cstr)// "_ranging_ranges.out")
               CALL OPEN(tmp_file2)
               IF (error) THEN
                  CALL errorMessage("oorb / ranging ", &
@@ -2384,7 +2384,7 @@ PROGRAM oorb
               END DO
               CALL NULLIFY(tmp_file)
               CALL NULLIFY(tmp_file2)
-              CALL NEW(tmp_file, TRIM(str) // &
+              CALL NEW(tmp_file, TRIM(cstr) // &
                    "_ranging_sample_standard_deviations.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
@@ -2423,7 +2423,7 @@ PROGRAM oorb
               END IF
 
               ! Make plot using gnuplot:
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_ranging_orbits.out sor_orbits.out")
               IF (element_type_comp_prm == "cartesian") THEN
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/sor_plot_car.gp")
@@ -2434,24 +2434,24 @@ PROGRAM oorb
                     CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/sor_plot_kep.gp")
                  END IF
               END IF
-              CALL system("cp sor_results.eps " // TRIM(str) // &
+              CALL system("cp sor_results.eps " // TRIM(cstr) // &
                    "_ranging_" // TRIM(element_type_comp_prm) // &
                    "_results.eps")
               CALL system("rm -f sor_orbits.out sor_results.eps " // & 
-                   TRIM(str) // "_ranging_orbits.out ")
+                   TRIM(cstr) // "_ranging_orbits.out ")
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_ranging_" // &
+                 CALL system("gzip -f " // TRIM(cstr) // "_ranging_" // &
                       TRIM(element_type_comp_prm) // "_results.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_ranging_" // &
+                 CALL system("gv " // TRIM(cstr) // "_ranging_" // &
                       TRIM(element_type_comp_prm) // &
                       "_results.eps* &")
               END IF
-              !              CALL system("cp " // TRIM(str) // &
+              !              CALL system("cp " // TRIM(cstr) // &
               !                   "_ranging_ranges.out sor_ranges.out")
               CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/sor_plot_range.gp")
-              CALL system("cp sor_ranges.eps " // TRIM(str) // &
+              CALL system("cp sor_ranges.eps " // TRIM(cstr) // &
                    "_ranging_ranges.eps")
               CALL system("rm -f sor_histo.out sor_ranges.eps")
            END IF
@@ -3406,14 +3406,14 @@ PROGRAM oorb
            END IF
 
            IF (plot_results) THEN
-              CALL toString(dt, str, error, frmt="(F10.2)")
+              CALL toString(dt, cstr, error, frmt="(F10.2)")
               IF (error) THEN
                  CALL errorMessage("oorb / observation_sampling ", &
                       "TRACE BACK (235)", 1)
                  STOP
               END IF
-              str = TRIM(id) // "_"// TRIM(str)
-              CALL makeResidualStamps(storb, obss_sep(i), TRIM(str) // &
+              cstr = TRIM(id) // "_"// TRIM(cstr)
+              CALL makeResidualStamps(storb, obss_sep(i), TRIM(cstr) // &
                    "_os_residual_stamps.eps", compute=.TRUE.)
               IF (error) THEN
                  CALL errorMessage("oorb / observation_sampling", &
@@ -3421,10 +3421,10 @@ PROGRAM oorb
                  STOP
               END IF
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_os_residual_stamps.eps")
+                 CALL system("gzip -f " // TRIM(cstr) // "_os_residual_stamps.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_os_residual_stamps.eps* &")
+                 CALL system("gv " // TRIM(cstr) // "_os_residual_stamps.eps* &")
               END IF
               ALLOCATE(elements_arr(SIZE(orb_arr_cmp,dim=1),7), stat=err)
               IF (err /= 0) THEN
@@ -3432,7 +3432,7 @@ PROGRAM oorb
                       "Could not allocate memory (3).", 1)
                  STOP
               END IF
-              CALL NEW(tmp_file, TRIM(str)// "_os_orbits.out")
+              CALL NEW(tmp_file, TRIM(cstr)// "_os_orbits.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
                  CALL errorMessage("oorb / observation_sampling ", &
@@ -3471,7 +3471,7 @@ PROGRAM oorb
                  CALL NULLIFY(t)
               END DO
               CALL NULLIFY(tmp_file)
-              CALL NEW(tmp_file, TRIM(str) // &
+              CALL NEW(tmp_file, TRIM(cstr) // &
                    "_os_sample_standard_deviations.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
@@ -3507,25 +3507,25 @@ PROGRAM oorb
                  STOP
               END IF
               ! Make plot using gnuplot:
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_os_orbits.out sor_orbits.out")
               IF (element_type_comp_prm == "cartesian") THEN
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/sor_plot_car.gp")
               ELSE
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/sor_plot_kep.gp")
               END IF
-              CALL system("cp sor_results.eps " // TRIM(str) // &
+              CALL system("cp sor_results.eps " // TRIM(cstr) // &
                    "_os_" // TRIM(element_type_comp_prm) // &
                    "_results.eps")
               CALL system("rm -f sor_orbits.out sor_results.eps " // & 
-                   TRIM(str) // "_os_orbits.out " // TRIM(str) // &
+                   TRIM(cstr) // "_os_orbits.out " // TRIM(cstr) // &
                    "_os_sample_standard_deviations.out")
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_os_" // &
+                 CALL system("gzip -f " // TRIM(cstr) // "_os_" // &
                       TRIM(element_type_comp_prm) // "_results.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_os_" // &
+                 CALL system("gv " // TRIM(cstr) // "_os_" // &
                       TRIM(element_type_comp_prm) // &
                       "_results.eps* &")
               END IF
@@ -3985,14 +3985,14 @@ PROGRAM oorb
            END DO
            CALL NULLIFY(orb_out_file)
            IF (plot_results) THEN
-              CALL toString(dt, str, error, frmt="(F10.2)")
+              CALL toString(dt, cstr, error, frmt="(F10.2)")
               IF (error) THEN
                  CALL errorMessage("oorb / vov", &
                       "TRACE BACK (145)", 1)
                  STOP
               END IF
-              str = TRIM(id) // "_"// TRIM(str)
-              CALL makeResidualStamps(storb, obss_sep(i), TRIM(str) // &
+              cstr = TRIM(id) // "_"// TRIM(cstr)
+              CALL makeResidualStamps(storb, obss_sep(i), TRIM(cstr) // &
                    "_vov_residual_stamps.ps",  compute=.TRUE.)
               IF (error) THEN
                  CALL errorMessage("oorb / vov", &
@@ -4000,7 +4000,7 @@ PROGRAM oorb
                  STOP
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_vov_residual_stamps.ps &")
+                 CALL system("gv " // TRIM(cstr) // "_vov_residual_stamps.ps &")
               END IF
               CALL getResults(storb, &
                    vov_map_cmp=vov_map, &
@@ -4019,7 +4019,7 @@ PROGRAM oorb
                       "Could not allocate memory (10)", 1)
                  STOP
               END IF
-              CALL NEW(tmp_file, TRIM(str)// "_vov_orbits.out")
+              CALL NEW(tmp_file, TRIM(cstr)// "_vov_orbits.out")
               IF (error) THEN
                  CALL errorMessage("oorb / vov", &
                       "TRACE BACK (150)", 1)
@@ -4083,7 +4083,7 @@ PROGRAM oorb
                  STOP
               END IF
               CALL NULLIFY(orb)
-              CALL NEW(tmp_file, TRIM(str)// "_vov_nominal_orbit.out")
+              CALL NEW(tmp_file, TRIM(cstr)// "_vov_nominal_orbit.out")
               IF (error) THEN
                  CALL errorMessage("oorb / vov", &
                       "TRACE BACK (185)", 1)
@@ -4106,7 +4106,7 @@ PROGRAM oorb
               CALL NULLIFY(tmp_file)
               CALL NULLIFY(t)
               vov_nmap = SIZE(vov_map,dim=1)
-              CALL NEW(tmp_file, TRIM(str)// "_vov_sampling_grid.out")
+              CALL NEW(tmp_file, TRIM(cstr)// "_vov_sampling_grid.out")
               IF (error) THEN
                  CALL errorMessage("oorb / vov", &
                       "TRACE BACK (195)", 1)
@@ -4150,7 +4150,7 @@ PROGRAM oorb
                  WRITE(getUnit(tmp_file),*)
               END DO
               CALL NULLIFY(tmp_file)
-              CALL NEW(tmp_file, TRIM(str) // &
+              CALL NEW(tmp_file, TRIM(cstr) // &
                    "_vov_sample_standard_deviations.out")
               IF (error) THEN
                  CALL errorMessage("oorb / vov", &
@@ -4196,29 +4196,29 @@ PROGRAM oorb
                  STOP
               END IF
               ! Make plot using gnuplot:
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_vov_sampling_grid.out vov_sampling_grid.out")
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_vov_orbits.out vov_orbits.out")
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_vov_nominal_orbit.out vov_nominal_orbit.out")
               IF (element_type_comp_prm == "cartesian") THEN
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/vov_plot_car.gp")
               ELSE
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/vov_plot_kep.gp")
               END IF
-              CALL system("cp vov_results.ps " // TRIM(str) // &
+              CALL system("cp vov_results.ps " // TRIM(cstr) // &
                    "_vov_" // TRIM(element_type_comp_prm) // &
                    "_results.ps")
               CALL system("rm -f vov_sampling_grid.out vov_orbits.out " // &
                    "vov_nominal_orbit.out vov_results.ps")
-              CALL system("rm -f " // TRIM(str) // &
-                   "_vov_sampling_grid.out " // TRIM(str) &
-                   // "_vov_orbits.out " // TRIM(str) // &
-                   "_vov_nominal_orbit.out " // TRIM(str) // &
+              CALL system("rm -f " // TRIM(cstr) // &
+                   "_vov_sampling_grid.out " // TRIM(cstr) &
+                   // "_vov_orbits.out " // TRIM(cstr) // &
+                   "_vov_nominal_orbit.out " // TRIM(cstr) // &
                    "_vov_sample_standard_deviations.out")
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_vov_" // &
+                 CALL system("gv " // TRIM(cstr) // "_vov_" // &
                       TRIM(element_type_comp_prm) // &
                       "_results.ps &")
               END IF
@@ -4655,14 +4655,14 @@ PROGRAM oorb
            END IF
         END IF
         IF (plot_results) THEN
-           CALL toString(dt, str, error, frmt="(F10.2)")
+           CALL toString(dt, cstr, error, frmt="(F10.2)")
            IF (error) THEN
               CALL errorMessage("oorb / vomcmc", &
                    "TRACE BACK (145)", 1)
               STOP
            END IF
-           str = TRIM(id) // "_"// TRIM(str)
-           CALL makeResidualStamps(storb, obss_sep(i), TRIM(str) // &
+           cstr = TRIM(id) // "_"// TRIM(cstr)
+           CALL makeResidualStamps(storb, obss_sep(i), TRIM(cstr) // &
                 "_vomcmc_residual_stamps.eps",  compute=.TRUE.)
            IF (error) THEN
               CALL errorMessage("oorb / vomcmc", &
@@ -4670,7 +4670,7 @@ PROGRAM oorb
               STOP
            END IF
            IF (plot_open) THEN
-              CALL system("gv " // TRIM(str) // "_vomcmc_residual_stamps.eps &")
+              CALL system("gv " // TRIM(cstr) // "_vomcmc_residual_stamps.eps &")
            END IF
 !!$           CALL getResults(storb, &
 !!$                vomcmc_map_cmp=vomcmc_map, &
@@ -4689,7 +4689,7 @@ PROGRAM oorb
                    "Could not allocate memory (10)", 1)
               STOP
            END IF
-           CALL NEW(tmp_file, TRIM(str)// "_vomcmc_orbits.out")
+           CALL NEW(tmp_file, TRIM(cstr)// "_vomcmc_orbits.out")
            IF (error) THEN
               CALL errorMessage("oorb / vomcmc", &
                    "TRACE BACK (150)", 1)
@@ -4753,7 +4753,7 @@ PROGRAM oorb
               STOP
            END IF
            CALL NULLIFY(orb)
-           CALL NEW(tmp_file, TRIM(str)// "_vomcmc_nominal_orbit.out")
+           CALL NEW(tmp_file, TRIM(cstr)// "_vomcmc_nominal_orbit.out")
            IF (error) THEN
               CALL errorMessage("oorb / vomcmc", &
                    "TRACE BACK (185)", 1)
@@ -4775,16 +4775,16 @@ PROGRAM oorb
            END IF
            CALL NULLIFY(tmp_file)
            CALL NULLIFY(t)
-           !CALL system("cp " // TRIM(str) // &
+           !CALL system("cp " // TRIM(cstr) // &
            !     "_vomcmc_orbits.out vomcmc_orbits.out")
-           CALL system("cp " // TRIM(str) // &
+           CALL system("cp " // TRIM(cstr) // &
                 "_vomcmc_orbits.out sor_orbits.out")
            !           IF (element_type_comp_prm == "cartesian") THEN
            !              CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/vomcmc_plot_car.gp")
            !           ELSE
            !              CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/vomcmc_plot_kep.gp")
            !           END IF
-           !           CALL system("cp vomcmc_results.ps " // TRIM(str) // &
+           !           CALL system("cp vomcmc_results.ps " // TRIM(cstr) // &
            !                "_vomcmc_" // TRIM(element_type_comp_prm) // &
            !                "_results.ps")
            IF (element_type_comp_prm == "cartesian") THEN
@@ -4792,18 +4792,18 @@ PROGRAM oorb
            ELSE
               CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/sor_plot_kep.gp")
            END IF
-           CALL system("mv sor_results.eps " // TRIM(str) // &
+           CALL system("mv sor_results.eps " // TRIM(cstr) // &
                 "_vomcmc_" // TRIM(element_type_comp_prm) // &
                 "_results.eps")
            CALL system("rm -f vomcmc_sampling_grid.out vomcmc_orbits.out " // &
                 "vomcmc_nominal_orbit.out vomcmc_results.ps sor_orbits.out")
-           CALL system("rm -f " // TRIM(str) // &
-                "_vomcmc_sampling_grid.out " // TRIM(str) &
-                // "_vomcmc_orbits.out " // TRIM(str) // &
-                "_vomcmc_nominal_orbit.out " // TRIM(str) // &
+           CALL system("rm -f " // TRIM(cstr) // &
+                "_vomcmc_sampling_grid.out " // TRIM(cstr) &
+                // "_vomcmc_orbits.out " // TRIM(cstr) // &
+                "_vomcmc_nominal_orbit.out " // TRIM(cstr) // &
                 "_vomcmc_sample_standard_deviations.out")
            IF (plot_open) THEN
-              CALL system("gv " // TRIM(str) // "_vomcmc_" // &
+              CALL system("gv " // TRIM(cstr) // "_vomcmc_" // &
                    TRIM(element_type_comp_prm) // &
                    "_results.ps &")
            END IF
@@ -5280,13 +5280,13 @@ PROGRAM oorb
 
            IF (plot_results) THEN
               ! Prepare data for plotting
-              CALL toString(dt, str, error, frmt="(F10.2)")
+              CALL toString(dt, cstr, error, frmt="(F10.2)")
               IF (error) THEN
                  CALL errorMessage("oorb / lsl", &
                       "TRACE BACK (200)", 1)
                  STOP
               END IF
-              str = TRIM(id) // "_"// TRIM(str)
+              cstr = TRIM(id) // "_"// TRIM(cstr)
               elements = getElements(orb, element_type_comp_prm, "ecliptic")
               IF (error) THEN
                  CALL errorMessage("oorb / lsl", &
@@ -5301,7 +5301,7 @@ PROGRAM oorb
                       "TRACE BACK (207)", 1)
                  STOP
               END IF
-              CALL NEW(tmp_file, TRIM(str)// &
+              CALL NEW(tmp_file, TRIM(cstr)// &
                    "_ls_nominal_orbit_stdevs_corrs.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
@@ -5356,14 +5356,14 @@ PROGRAM oorb
               END IF
               CALL NULLIFY(tmp_file)
               ! Make plot using gnuplot:
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_ls_nominal_orbit_stdevs_corrs.out " // &
                    "ls_nominal_orbit_stdevs_corrs.out")
               IF (element_type_comp_prm == "cartesian") THEN
-                 CALL system("cp " // TRIM(gnuplot_scripts_dir) // "/ls_plot.gp " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'y [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                 CALL system("cp " // TRIM(gnuplot_scripts_dir) // "/ls_plot.gp " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'y [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(2)) // &
                       "+" // TRIM(stdev_str_arr(2)) // "*sin\(t+" // &
@@ -5375,12 +5375,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(1)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:2 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.5,0.66 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'z [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.5,0.66 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'z [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(3)) // &
                       "+" // TRIM(stdev_str_arr(3)) // "*sin\(t+" // &
@@ -5391,12 +5391,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(2)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:3 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.0,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'dx/dt [AU/d]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.0,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'dx/dt [AU/d]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(4)) // &
                       "+" // TRIM(stdev_str_arr(4)) // "*sin\(t+" // &
@@ -5407,12 +5407,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(3)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:4 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'dy/dt [AU/d]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'dy/dt [AU/d]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(5)) // &
                       "+" // TRIM(stdev_str_arr(5)) // "*sin\(t+" // &
@@ -5423,12 +5423,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(4)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:5 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.0,0.0 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'dz/dt [AU/d]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.0,0.0 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'x [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'dz/dt [AU/d]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(6)) // &
                       "+" // TRIM(stdev_str_arr(6)) // "*sin\(t+" // &
@@ -5439,17 +5439,17 @@ PROGRAM oorb
                       TRIM(corr_str_arr(5)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:6 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo unset parametric  >> " // TRIM(str) // ".gp")
-                 CALL system("echo unset multiplot >> " // TRIM(str) // ".gp")
-                 CALL system("echo reset >> " // TRIM(str) // ".gp")
-                 CALL system("echo set terminal x11 >> " // TRIM(str) // ".gp")
-                 CALL system("gnuplot " //  TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo unset parametric  >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo unset multiplot >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo reset >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set terminal x11 >> " // TRIM(cstr) // ".gp")
+                 CALL system("gnuplot " //  TRIM(cstr) // ".gp")
               ELSE IF (element_type_comp_prm == "keplerian") THEN
-                 CALL system("cp " // TRIM(gnuplot_scripts_dir) // "/ls_plot.gp " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'e\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                 CALL system("cp " // TRIM(gnuplot_scripts_dir) // "/ls_plot.gp " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'e\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(2)) // &
                       "+" // TRIM(stdev_str_arr(2)) // "*sin\(t+" // &
@@ -5461,12 +5461,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(1)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:2 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.5,0.66 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'i [deg]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.5,0.66 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'i [deg]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(3)) // &
                       "+" // TRIM(stdev_str_arr(3)) // "*sin\(t+" // &
@@ -5477,12 +5477,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(2)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:3 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.0,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'\{/Symbol O\} [deg]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.0,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'\{/Symbol O\} [deg]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(4)) // &
                       "+" // TRIM(stdev_str_arr(4)) // "*sin\(t+" // &
@@ -5493,12 +5493,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(3)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:4 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'\{/Symbol o\} [deg]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'\{/Symbol o\} [deg]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(5)) // &
                       "+" // TRIM(stdev_str_arr(5)) // "*sin\(t+" // &
@@ -5509,12 +5509,12 @@ PROGRAM oorb
                       TRIM(corr_str_arr(4)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:5 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo set size 0.5,0.33 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set origin 0.0,0.0 >> " // TRIM(str) // ".gp")
-                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set ylabel \'M [deg]\' >> " // TRIM(str) // ".gp")
-                 CALL system("echo set parametric >> " // TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo set size 0.5,0.33 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set origin 0.0,0.0 >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set xlabel \'a [AU]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set ylabel \'M [deg]\' >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set parametric >> " // TRIM(cstr) // ".gp")
                  CALL system("echo plot " // TRIM(element_str_arr(1)) // "+" // &
                       TRIM(stdev_str_arr(1)) // "*cos\(t\)," // TRIM(element_str_arr(6)) // &
                       "+" // TRIM(stdev_str_arr(6)) // "*sin\(t+" // &
@@ -5525,27 +5525,27 @@ PROGRAM oorb
                       TRIM(corr_str_arr(5)) // "*pi/2\), " // &
                       "\'ls_nominal_orbit_stdevs_corrs.out\' " // &
                       "using 1:6 with points pt 3 ps 3.0 >> " // &
-                      TRIM(str) // ".gp")
-                 CALL system("echo unset parametric  >> " // TRIM(str) // ".gp")
-                 CALL system("echo unset multiplot >> " // TRIM(str) // ".gp")
-                 CALL system("echo reset >> " // TRIM(str) // ".gp")
-                 CALL system("echo set terminal x11 >> " // TRIM(str) // ".gp")
-                 CALL system("gnuplot " //  TRIM(str) // ".gp")
+                      TRIM(cstr) // ".gp")
+                 CALL system("echo unset parametric  >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo unset multiplot >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo reset >> " // TRIM(cstr) // ".gp")
+                 CALL system("echo set terminal x11 >> " // TRIM(cstr) // ".gp")
+                 CALL system("gnuplot " //  TRIM(cstr) // ".gp")
               END IF
-              CALL system("cp ls_results.eps " // TRIM(str) // &
+              CALL system("cp ls_results.eps " // TRIM(cstr) // &
                    "_ls_" // TRIM(element_type_comp_prm) // &
                    "_results.eps")
               CALL system("rm -f " // &
                    "ls_nominal_orbit_stdevs_corrs.out " // &
-                   "ls_results.eps " // TRIM(str) // &
+                   "ls_results.eps " // TRIM(cstr) // &
                    "_ls_nominal_orbit_stdevs_corrs.out " // &
-                   TRIM(str) // ".gp")
+                   TRIM(cstr) // ".gp")
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_ls_" // &
+                 CALL system("gzip -f " // TRIM(cstr) // "_ls_" // &
                       TRIM(element_type_comp_prm) // "_results.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_ls_" // &
+                 CALL system("gv " // TRIM(cstr) // "_ls_" // &
                       TRIM(element_type_comp_prm) // &
                       "_results.eps* &")
               END IF
@@ -5907,14 +5907,14 @@ PROGRAM oorb
               CALL NULLIFY(out_file)
            END IF
            IF (plot_results) THEN
-              CALL toString(dt, str, error, frmt="(F10.2)")
+              CALL toString(dt, cstr, error, frmt="(F10.2)")
               IF (error) THEN
                  CALL errorMessage("oorb / covariance_sampling ", &
                       "TRACE BACK (235)", 1)
                  STOP
               END IF
-              str = TRIM(id) // "_"// TRIM(str)
-              CALL makeResidualStamps(storb, obss_sep(i), TRIM(str) // &
+              cstr = TRIM(id) // "_"// TRIM(cstr)
+              CALL makeResidualStamps(storb, obss_sep(i), TRIM(cstr) // &
                    "_cos_residual_stamps.eps")
               IF (error) THEN
                  CALL errorMessage("oorb / covariance_sampling", &
@@ -5922,10 +5922,10 @@ PROGRAM oorb
                  STOP
               END IF
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_cos_residual_stamps.eps")
+                 CALL system("gzip -f " // TRIM(cstr) // "_cos_residual_stamps.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_cos_residual_stamps.eps* &")
+                 CALL system("gv " // TRIM(cstr) // "_cos_residual_stamps.eps* &")
               END IF
               ALLOCATE(elements_arr(SIZE(orb_arr_cmp,dim=1),7), stat=err)
               IF (err /= 0) THEN
@@ -5933,7 +5933,7 @@ PROGRAM oorb
                       "Could not allocate memory (3).", 1)
                  STOP
               END IF
-              CALL NEW(tmp_file, TRIM(str)// "_cos_orbits.out")
+              CALL NEW(tmp_file, TRIM(cstr)// "_cos_orbits.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
                  CALL errorMessage("oorb / covariance_sampling ", &
@@ -5972,7 +5972,7 @@ PROGRAM oorb
                  CALL NULLIFY(t)
               END DO
               CALL NULLIFY(tmp_file)
-              CALL NEW(tmp_file, TRIM(str) // &
+              CALL NEW(tmp_file, TRIM(cstr) // &
                    "_cos_sample_standard_deviations.out")
               CALL OPEN(tmp_file)
               IF (error) THEN
@@ -6008,25 +6008,25 @@ PROGRAM oorb
                  STOP
               END IF
               ! Make plot using gnuplot:
-              CALL system("cp " // TRIM(str) // &
+              CALL system("cp " // TRIM(cstr) // &
                    "_cos_orbits.out cos_orbits.out")
               IF (element_type_comp_prm == "cartesian") THEN
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/cos_plot_car.gp")
               ELSE
                  CALL system("gnuplot " // TRIM(gnuplot_scripts_dir) // "/cos_plot_kep.gp")
               END IF
-              CALL system("cp cos_results.eps " // TRIM(str) // &
+              CALL system("cp cos_results.eps " // TRIM(cstr) // &
                    "_cos_" // TRIM(element_type_comp_prm) // &
                    "_results.eps")
               CALL system("rm -f cos_orbits.out cos_results.eps " // & 
-                   TRIM(str) // "_cos_orbits.out " // TRIM(str) // &
+                   TRIM(cstr) // "_cos_orbits.out " // TRIM(cstr) // &
                    "_cos_sample_standard_deviations.out")
               IF (compress) THEN
-                 CALL system("gzip -f " // TRIM(str) // "_cos_" // &
+                 CALL system("gzip -f " // TRIM(cstr) // "_cos_" // &
                       TRIM(element_type_comp_prm) // "_results.eps")
               END IF
               IF (plot_open) THEN
-                 CALL system("gv " // TRIM(str) // "_cos_" // &
+                 CALL system("gv " // TRIM(cstr) // "_cos_" // &
                       TRIM(element_type_comp_prm) // &
                       "_results.eps* &")
               END IF
@@ -6072,13 +6072,13 @@ PROGRAM oorb
      END IF
      id = getID(obss_sep(1))
      dt = getObservationalTimespan(obss_sep(1))
-     CALL toString(dt, str, error, frmt="(F10.2)")
+     CALL toString(dt, cstr, error, frmt="(F10.2)")
      IF (error) THEN
         CALL errorMessage("oorb / residual-stamps", &
              "TRACE BACK (15)", 1)
         STOP
      END IF
-     str = TRIM(id) // "_"// TRIM(str)
+     cstr = TRIM(id) // "_"// TRIM(cstr)
      CALL setParameters(storb_arr_in(1), &
           dyn_model=dyn_model, &
           perturbers=perturbers, &
@@ -6088,7 +6088,7 @@ PROGRAM oorb
           outlier_rejection=outlier_rejection_prm, &
           outlier_multiplier=outlier_multiplier_prm, &
           accept_multiplier=accwin_multiplier)
-     CALL makeResidualStamps(storb_arr_in(1), obss_sep(1), TRIM(str) // &
+     CALL makeResidualStamps(storb_arr_in(1), obss_sep(1), TRIM(cstr) // &
           "_residual_stamps.eps",  compute=.TRUE.)
      IF (error) THEN
         CALL errorMessage("oorb / residual-stamps", &

@@ -67,6 +67,8 @@ MODULE Observations_cl
   USE Observatories_cl
   USE Orbit_cl
 
+  USE FoX_sax
+  USE FoX_dom
   USE utilities
   USE sort
   USE linal
@@ -120,6 +122,48 @@ MODULE Observations_cl
      CHARACTER(len=4), DIMENSION(:), POINTER   :: obs_note_arr => NULL()
   END TYPE Observations
 
+  TYPE xml_info
+     INTEGER                                                   :: indx, nobs
+     CHARACTER(len=DESIGNATION_LEN), DIMENSION(:), ALLOCATABLE :: designation
+     CHARACTER(len=26), DIMENSION(:), ALLOCATABLE              :: obsTime
+     CHARACTER(len=10), DIMENSION(:), ALLOCATABLE              :: obsType
+     CHARACTER(len=3), DIMENSION(:), ALLOCATABLE               :: obsy_code
+     CHARACTER(len=2), DIMENSION(:), ALLOCATABLE               :: filter
+     REAL(bp), DIMENSION(:,:), ALLOCATABLE                     :: &
+          coordinates, &
+          coord_unc, &
+          correlation
+     REAL(bp), DIMENSION(:), ALLOCATABLE                       :: mag, mag_unc
+     REAL(bp), DIMENSION(:), ALLOCATABLE                       :: s2n
+  END TYPE xml_info
+
+  !! Variables for xml fortmat reader
+  TYPE (xml_t) :: xf
+  TYPE (xml_info) :: xml_input, xml_output
+
+  LOGICAL :: in_obsData    = .FALSE.
+  LOGICAL :: in_permID     = .FALSE.
+  LOGICAL :: in_obsTime    = .FALSE.
+  LOGICAL :: in_stn        = .FALSE.
+  LOGICAL :: in_ra         = .FALSE.
+  LOGICAL :: in_dec        = .FALSE.
+  LOGICAL :: in_dotRA      = .FALSE.
+  LOGICAL :: in_dotDec     = .FALSE.
+  LOGICAL :: in_rmsRA      = .FALSE.
+  LOGICAL :: in_rmsDotRA   = .FALSE.
+  LOGICAL :: in_rmsDotDec  = .FALSE.
+  LOGICAL :: in_rmsDec     = .FALSE.
+  LOGICAL :: in_rmsCorr_23 = .FALSE.
+  LOGICAL :: in_rmsCorr_25 = .FALSE.
+  LOGICAL :: in_rmsCorr_26 = .FALSE.
+  LOGICAL :: in_rmsCorr_35 = .FALSE.
+  LOGICAL :: in_rmsCorr_36 = .FALSE.
+  LOGICAL :: in_rmsCorr_56 = .FALSE.
+  LOGICAL :: in_mag        = .FALSE. 
+  LOGICAL :: in_rmsMag     = .FALSE.
+  LOGICAL :: in_band       = .FALSE.
+  LOGICAL :: in_logSNR     = .FALSE.
+  
   !! Initializes an Observations-object.
   INTERFACE NEW
      MODULE PROCEDURE NEW_Obss
@@ -3154,7 +3198,7 @@ CONTAINS
          position_angle_scan,  &
          epoch, epoch_err, epoch_utc,  epoch1, covcoeff
     INTEGER(ihp) :: observation_id, solution_id, source_id
-    INTEGER :: i, j, err, year, month, hour, min, deg, arcmin, &
+    INTEGER :: i, j, err, year, month, day_xml, hour, min, deg, arcmin, &
          nlines, coord_unit, indx, iobs, irecord, norb, ccd, &
          border1, border2, err_verb_, level_of_confidence, &
          number_mp, &
@@ -3236,6 +3280,137 @@ CONTAINS
     END IF
 
     SELECT CASE (TRIM(suffix))
+
+    CASE ("xml") !xmlcase
+       CALL open_xml_file(xf, fname, err)
+
+       CALL parse(xf, &
+            startElement_handler = startElement_counter, &
+            endElement_handler = endElement_counter)
+
+       CALL close_xml_t(xf)
+
+       ALLOCATE (xml_input%obsType(xml_input%nobs), xml_input%designation(xml_input%nobs),&
+            xml_input%obsy_code(xml_input%nobs), xml_input%obsTime(xml_input%nobs),&
+            xml_input%coordinates(xml_input%nobs,6), xml_input%coord_unc(xml_input%nobs,6),&
+            xml_input%correlation(xml_input%nobs,6), xml_input%mag(xml_input%nobs), &
+            xml_input%mag_unc(xml_input%nobs), xml_input%filter(xml_input%nobs), &
+            xml_input%s2n(xml_input%nobs))
+
+       xml_input%coordinates = 0.0_bp
+       xml_input%coord_unc = 0.0_bp
+       xml_input%correlation = 0.0_bp
+       
+       
+       CALL open_xml_file(xf, fname, err)
+
+       CALL parse(xf, &
+            startElement_handler = startElement_reader, &
+            endElement_handler = endElement_reader, &
+            characters_handler = characters_reader)
+
+       CALL close_xml_t(xf)
+       
+       i = 0
+       DO WHILE (i<xml_input%nobs)
+          
+          i=i+1
+          
+          READ(xml_input%obsTime(i), '(I4, 1X, I2, 1X, I2, 1X, I2, 1X, I2, 1X, F9.6)') year, month, day_xml, hour, min, sec
+
+          CALL NEW(t, year, month, day_xml, hour, min, sec, 'UTC')
+          IF (error) THEN
+             CALL errorMessage("Observations / readObservationFile", &
+                  "TRACE BACK (15)", 1)
+             RETURN
+          END IF
+
+          IF (xml_input%obsType(i) == 'streak') THEN
+             WRITE(*,*) xml_input%coordinates(i,2),xml_input%coordinates(i,3)
+             coordinates = 0_bp
+             coordinates(2) = xml_input%coordinates(i,2)*rad_deg
+             coordinates(3) = xml_input%coordinates(i,3)*rad_deg
+             coordinates(5) = xml_input%coordinates(i,5)*rad_deg
+             coordinates(6) = xml_input%coordinates(i,6)*rad_deg
+
+             CALL NEW(obs_scoord, coordinates, "equatorial", t)
+             IF (error) THEN
+                CALL errorMessage("Observations / readObservationFile", &
+                     "TRACE BACK (20)", 1)
+                RETURN
+             END IF
+
+          ELSE
+             CALL NEW(obs_scoord, xml_input%coordinates(i,2)*rad_deg, xml_input%coordinates(i,3)*rad_deg, t)
+             IF (error) THEN
+                CALL errorMessage("Observations / readObservationFile", &
+                     "TRACE BACK (20)", 1)
+                RETURN
+             END IF
+          END IF
+
+          covariance = 0.0
+
+          IF (PRESENT(stdev)) THEN
+             DO j=1,6
+                covariance(j,j) = stdev(j)**2.0_bp
+             END DO
+          ELSE
+             covariance(2,2) = (xml_input%coord_unc(i,2)*rad_deg)**2.0_bp
+             covariance(3,3) = (xml_input%coord_unc(i,3)*rad_deg)**2.0_bp
+             covariance(5,5) = (xml_input%coord_unc(i,5)*rad_deg)**2.0_bp
+             covariance(6,6) = (xml_input%coord_unc(i,6)*rad_deg)**2.0_bp
+
+             covariance(2,3) = xml_input%correlation(i,1)*xml_input%coord_unc(i,2)*xml_input%coord_unc(i,3)*rad_deg**2.0_bp
+             covariance(3,2) = covariance(2,3)
+             covariance(2,5) = xml_input%correlation(i,2)*xml_input%coord_unc(i,2)*xml_input%coord_unc(i,5)*rad_deg**2.0_bp
+             covariance(5,2) = covariance(2,5)
+             covariance(2,6) = xml_input%correlation(i,3)*xml_input%coord_unc(i,2)*xml_input%coord_unc(i,6)*rad_deg**2.0_bp
+             covariance(6,2) = covariance(2,6)
+             covariance(3,5) = xml_input%correlation(i,4)*xml_input%coord_unc(i,3)*xml_input%coord_unc(i,5)*rad_deg**2.0_bp
+             covariance(5,3) = covariance(3,5)
+             covariance(3,6) = xml_input%correlation(i,5)*xml_input%coord_unc(i,3)*xml_input%coord_unc(i,6)*rad_deg**2.0_bp
+             covariance(6,3) = covariance(3,6)
+             covariance(5,6) = xml_input%correlation(i,6)*xml_input%coord_unc(i,5)*xml_input%coord_unc(i,6)*rad_deg**2.0_bp
+             covariance(6,5) = covariance(5,6)
+          END IF
+          
+
+          IF (xml_input%obsType(i) == "optical") THEN
+             obs_mask = (/ .FALSE., .TRUE., .TRUE., .FALSE., .FALSE., .FALSE. /)
+          ELSEIF (xml_input%obsType(i) == 'streak') THEN
+             obs_mask = (/ .FALSE., .TRUE., .TRUE., .FALSE., .TRUE., .TRUE. /)
+          END IF
+          
+          obsy = getObservatory(obsies, xml_input%obsy_code(i))
+          IF (error) THEN
+             CALL errorMessage("Observations / readObservationFile", &
+                  "TRACE BACK (25)", 1)
+             RETURN
+          END IF
+          obsy_ccoord = getObservatoryCCoord(obsies, xml_input%obsy_code(i), t)
+          IF (error) THEN
+             CALL errorMessage("Observations / readObservationFile", &
+                  "TRACE BACK (30)", 1)
+             RETURN
+          END IF
+
+          CALL NEW(this%obs_arr(i), number="", designation=xml_input%designation(i), &
+               type=xml_input%obsType(i), discovery=.FALSE., note1="", note2="", &
+               obs_scoord=obs_scoord, covariance=covariance, &
+               obs_mask=obs_mask, mag=xml_input%mag(i), mag_unc=xml_input%mag_unc(i), &
+               filter=xml_input%filter(i), s2n=xml_input%s2n(i), &
+               obsy=obsy, obsy_ccoord=obsy_ccoord, secret_name="")
+          
+          CALL NULLIFY(t)
+          CALL NULLIFY(obs_scoord)
+          CALL NULLIFY(obsy)
+          CALL NULLIFY(obsy_ccoord)
+       ENDDO
+
+       DEALLOCATE (xml_input%obsType, xml_input%designation, xml_input%obsy_code, &
+            xml_input%obsTime, xml_input%coordinates, xml_input%coord_unc, xml_input%correlation, &
+            xml_input%mag, xml_input%mag_unc, xml_input%filter, xml_input%s2n)
 
     CASE ("des")
 
@@ -3579,9 +3754,11 @@ CONTAINS
                 CALL rotateToEquatorial(satellite_ccoord)
                 coord_unit = 2
              END SELECT
-             CALL NEW(this%obs_arr(i), number, designation, discovery, &
-                  line1(14:14), line1(15:15), obs_scoord, covariance, &
-                  obs_mask, mag, line1(71:71), obsy, obsy_ccoord, &
+             CALL NEW(this%obs_arr(i), number=number, designation=designation, &
+                  discovery=discovery, note1=line1(14:14), note2=line1(15:15), &
+                  obs_scoord=obs_scoord, covariance=covariance, &
+                  obs_mask=obs_mask, mag=mag, filter=line1(71:71), &
+                  obsy=obsy, obsy_ccoord=obsy_ccoord, &
                   satellite_ccoord=satellite_ccoord, coord_unit=coord_unit)
           CASE default
              obsy_ccoord = getObservatoryCCoord(obsies, obsy_code, t)
@@ -6429,7 +6606,300 @@ CONTAINS
   midGaiaV(3)=vzsig
   
   
-  END SUBROUTINE collapseGaiaVel
+END SUBROUTINE collapseGaiaVel
+
+
+
+
+
+  !! *Description*:
+  !!
+  !! Reads a xml format file.
+  !!
+  !!
+
+  SUBROUTINE startElement_counter(namespaceURI, localname, name, atts)
+    CHARACTER(len=*), INTENT(in)   :: namespaceURI
+    CHARACTER(len=*), INTENT(in)   :: localname
+    CHARACTER(len=*), INTENT(in)   :: name
+    TYPE(dictionary_t), INTENT(in) :: atts
+
+    IF (name == 'obsData') THEN
+       in_obsData = .TRUE.
+    END IF
+    IF(in_obsData) THEN
+       IF (name == "optical") THEN
+          xml_input%indx = xml_input%indx+1
+       ELSEIF (name == 'streak') THEN
+          xml_input%indx = xml_input%indx+1 
+       END IF       
+    END IF
+        
+  END SUBROUTINE startElement_counter
+
+
+
+
+  
+  SUBROUTINE endElement_counter(namespaceURI, localname, name)
+
+    CHARACTER(len=*), INTENT(in) :: namespaceURI
+    CHARACTER(len=*), INTENT(in) :: localname
+    CHARACTER(len=*), INTENT(in) :: name
+
+    IF (name=='obsData') THEN
+       in_obsData = .FALSE.
+       xml_input%nobs = xml_input%indx
+       xml_input%indx = 0
+    END IF
+   
+  END SUBROUTINE endElement_counter 
+
+
+
+
+  
+  SUBROUTINE startElement_reader(namespaceURI, localname, name, atts)
+    CHARACTER(len=*), INTENT(in)   :: namespaceURI
+    CHARACTER(len=*), INTENT(in)   :: localname
+    CHARACTER(len=*), INTENT(in)   :: name
+    TYPE(dictionary_t), INTENT(in) :: atts
+
+    IF (name == 'obsData') THEN
+       in_obsData = .TRUE.
+    END IF
+
+    IF (in_obsData) THEN
+       IF (name == 'optical') THEN
+          xml_input%indx = xml_input%indx+1
+          xml_input%obsType(xml_input%indx) = name        
+       END IF
+       IF (name == 'streak') THEN
+          xml_input%indx = xml_input%indx+1
+          xml_input%obsType(xml_input%indx) = name
+       END IF
+       IF (name == 'permID') THEN
+          in_permID = .TRUE.
+       END IF
+       IF (name == 'obsTime') THEN
+          in_obsTime = .TRUE.
+       END IF
+       IF (name == 'stn') THEN
+          in_stn = .TRUE.
+       END IF
+       IF (name == 'ra') THEN
+          in_ra = .TRUE.
+       END IF       
+       IF (name == 'dec') THEN
+          in_dec = .TRUE.
+       END IF
+       IF (name == 'dotRA') THEN
+          in_dotRA = .TRUE.
+       END IF       
+       IF (name == 'dotDec') THEN
+          in_dotDec = .TRUE.
+       END IF
+       IF (name == 'rmsRA') THEN
+          in_rmsRa = .TRUE.
+       END IF
+       IF (name == 'rmsDec') THEN
+          in_rmsDec = .TRUE.
+       END IF
+       IF (name == 'rmsDotRA') THEN
+          in_rmsDotRA = .TRUE.
+       END IF
+       IF (name == 'rmsDotDec') THEN
+          in_rmsDotDec = .TRUE.
+       END IF
+       IF (name == 'rmsCorr23') THEN
+          in_rmsCorr_23 = .TRUE.
+       END IF
+       IF (name == 'rmsCorr25') THEN
+          in_rmsCorr_25 = .TRUE.
+       END IF
+       IF (name == 'rmsCorr26') THEN
+          in_rmsCorr_26 = .TRUE.
+       END IF
+       IF (name == 'rmsCorr35') THEN
+          in_rmsCorr_35 = .TRUE.
+       END IF
+       IF (name == 'rmsCorr36') THEN
+          in_rmsCorr_36 = .TRUE.
+       END IF
+       IF (name == 'rmsCorr56') THEN
+          in_rmsCorr_56 = .TRUE.
+       END IF
+       IF (name == 'mag') THEN
+          in_mag = .TRUE.
+       END IF
+       IF (name == 'rmsMag') THEN
+          in_rmsMag = .TRUE.
+       END IF
+       IF (name == 'band') THEN
+          in_band = .TRUE.
+       END IF
+       IF (name == 'logSNR') THEN
+          in_logSNR = .TRUE.
+       END IF
+    END IF
+  END SUBROUTINE startElement_reader
+
+
+
+
+
+  SUBROUTINE endElement_reader(namespaceURI, localname, name)
+
+    CHARACTER(len=*), INTENT(in) :: namespaceURI
+    CHARACTER(len=*), INTENT(in) :: localname
+    CHARACTER(len=*), INTENT(in) :: name
+    
+    IF (in_obsData) THEN
+       IF (name == 'permID') THEN
+          in_permID = .FALSE.
+       END IF
+       IF (name == 'stn') THEN
+          in_stn = .FALSE.
+       END IF
+       IF (name == 'obsTime') THEN
+          in_obsTime = .FALSE.
+       END IF
+       IF (name == 'ra') THEN
+          in_ra = .FALSE.
+       END IF
+       IF (name == 'dec') THEN
+          in_dec = .FALSE.
+       END IF
+       IF (name == 'dotRA') THEN
+          in_dotRA = .FALSE.
+       END IF
+       IF (name == 'dotDec') THEN
+          in_dotDec = .FALSE.
+       END IF
+       IF (name == 'rmsRA') THEN
+          in_rmsRa = .FALSE.
+       END IF
+       IF (name == 'rmsDec') THEN
+          in_rmsDec = .FALSE.
+       END IF
+       IF (name == 'rmsDotRA') THEN
+          in_rmsDotRA = .FALSE.
+       END IF
+       IF (name == 'rmsDotDec') THEN
+          in_rmsDotDec = .FALSE.
+       END IF
+       IF (name == 'rmsCorr23') THEN
+          in_rmsCorr_23 = .FALSE.
+       END IF
+       IF (name == 'rmsCorr25') THEN
+          in_rmsCorr_25 = .FALSE.
+       END IF
+       IF (name == 'rmsCorr26') THEN
+          in_rmsCorr_26 = .FALSE.
+       END IF
+       IF (name == 'rmsCorr35') THEN
+          in_rmsCorr_35 = .FALSE.
+       END IF
+       IF (name == 'rmsCorr36') THEN
+          in_rmsCorr_36 = .FALSE.
+       END IF
+       IF (name == 'rmsCorr56') THEN
+          in_rmsCorr_56 = .FALSE.
+       END IF
+       IF (name == 'mag') THEN
+          in_mag = .FALSE.
+       END IF
+       IF (name == 'rmsMag') THEN
+          in_rmsMag = .FALSE.
+       END IF
+       IF (name == 'band') THEN
+          in_band = .FALSE.
+       END IF
+       IF (name == 'logSNR') THEN
+          in_logSNR = .FALSE.
+       END IF
+    ENDIF
+
+    IF (name == 'obsData') THEN
+       in_obsData = .FALSE.
+    END IF
+
+  END SUBROUTINE endElement_reader
+
+
+
+
+
+  SUBROUTINE characters_reader(chars)
+    CHARACTER(len=*), INTENT(in) :: chars
+
+    IF (in_obsData) THEN
+       IF (in_permID) THEN
+          xml_input%designation(xml_input%indx) = chars
+       END IF
+       IF (in_stn) THEN
+          xml_input%obsy_code(xml_input%indx) = chars
+       END IF
+       IF (in_obsTime) THEN
+          xml_input%obsTime(xml_input%indx) = chars
+       END IF
+       IF (in_ra) THEN
+          READ(chars,*) xml_input%coordinates(xml_input%indx,2)
+       END IF
+       IF (in_dec) THEN
+          READ(chars,*) xml_input%coordinates(xml_input%indx,3)
+       END IF
+       IF (in_dotRA) THEN
+          READ(chars,*) xml_input%coordinates(xml_input%indx,5)
+       END IF
+       IF (in_dotDec) THEN
+          READ(chars,*) xml_input%coordinates(xml_input%indx,6)
+       END IF
+       IF (in_rmsRA) THEN
+          READ(chars,*) xml_input%coord_unc(xml_input%indx,2)
+       END IF
+       IF (in_rmsDec) THEN
+          READ(chars,*) xml_input%coord_unc(xml_input%indx,3)
+       END IF
+       IF (in_rmsDotRA) THEN
+          READ(chars,*) xml_input%coord_unc(xml_input%indx,5)
+       END IF
+       IF (in_rmsDotDec) THEN
+          READ(chars,*) xml_input%coord_unc(xml_input%indx,6)
+       END IF
+       IF (in_rmsCorr_23) THEN
+          READ(chars,*) xml_input%correlation(xml_input%indx,1)
+       END IF
+       IF (in_rmsCorr_25) THEN
+          READ(chars,*) xml_input%correlation(xml_input%indx,2)
+       END IF
+       IF (in_rmsCorr_26) THEN
+          READ(chars,*) xml_input%correlation(xml_input%indx,3)
+       END IF
+       IF (in_rmsCorr_35) THEN
+          READ(chars,*) xml_input%correlation(xml_input%indx,4)
+       END IF
+       IF (in_rmsCorr_36) THEN
+          READ(chars,*) xml_input%correlation(xml_input%indx,5)
+       END IF
+       IF (in_rmsCorr_56) THEN
+          READ(chars,*) xml_input%correlation(xml_input%indx,6)
+       END IF
+       IF (in_mag) THEN
+          READ(chars,*) xml_input%mag(xml_input%indx)
+       END IF
+       IF (in_rmsMag) THEN
+          READ(chars,*) xml_input%mag_unc(xml_input%indx)
+       END IF
+       IF (in_band) THEN
+          xml_input%filter(xml_input%indx) = chars
+       END IF
+       IF (in_logSNR) THEN
+          READ(chars,*) xml_input%s2n(xml_input%indx)
+       END IF
+       
+    END IF
+  END SUBROUTINE characters_reader
 !
 
 

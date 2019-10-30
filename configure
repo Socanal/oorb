@@ -46,7 +46,7 @@ PYOORB=0
 PYTHON=python
 F2PY="f2py"
 PYTEST="py.test"
-ADDLIBS=
+ADDLIBS="-L/home/samuel/MasterThesis/ItWorks/oorb/fox/objs/lib/ -lFoX_sax -lFoX_common -lFoX_utils -lFoX_fsys -lFoX_dom -lFoX_wxml"
 ADDOPTS=
 COVERAGE=
 
