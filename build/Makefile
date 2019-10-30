@@ -59,7 +59,7 @@ $(addprefix ../bin/, $(PROGRAMS)): ../bin/%: ../main/%
 	cp -a $< $@
 
 $(addprefix ../main/, $(PROGRAMS)): ../main/%: %.o ../lib/liboorb.a
-	$(FC) $(FCOPTIONS) $^ $(ADDLIBS) -o $@.tmp
+	$(FC) $(FCOPTIONS) $^ $(ADDLIBS) -o $@.tmp m_common_buffer.o
 	fix-rpath.sh $@.tmp
 	mv $@.tmp $@
 

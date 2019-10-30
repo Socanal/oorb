@@ -954,6 +954,13 @@ CONTAINS
     INTEGER                           :: err, year, month, h, m, &
          deg, am, n, i, indx, err_verb_
 
+    !XML format variables
+    CHARACTER(len=26)                 :: time_xml
+    CHARACTER(len=12)                 :: sec_str_xml
+    CHARACTER(len=2)                  :: day_str_xml, hour_str_xml, min_str_xml
+    REAL(bp), DIMENSION(3)            :: velocity_xml
+    REAL(bp)                          :: hour_xml, min_xml, sec_xml
+
     IF (.NOT. this%is_initialized) THEN
        error = .TRUE.
        CALL errorMessage("Observation / getObservationRecords", &
@@ -1123,6 +1130,79 @@ CONTAINS
     records = " "
     SELECT CASE (TRIM(frmt))
 
+    CASE ("xml")
+
+       velocity_xml = getVelocity(this%obs_scoord)
+
+       n = LEN_TRIM(this%designation)
+       IF (n <= 7) THEN
+          designation = this%designation
+       ELSE
+          designation = this%designation
+          CALL MPC3DesToMPCDes(designation)
+          IF (error) THEN
+             CALL errorMessage("Observation / getObservationRecords", &
+                  "TRACE BACK (20)", 1)
+             DEALLOCATE(records, stat=err)
+             RETURN
+          END IF
+       END IF
+
+       CALL toString(INT(day), day_str_xml, error)
+       IF (error) THEN
+          CALL errorMessage("Observation / getObservationRecords", &
+               "Conversion error (45).", 1)
+          RETURN       
+       END IF
+       IF (INT(day) < 10) day_str_xml = "0" // TRIM(day_str_xml)
+       
+       hour_xml= (day-INT(day))*24.0_bp
+       CALL toString(INT(hour_xml), hour_str_xml, error)
+       IF (error) THEN
+          CALL errorMessage("Observation / getObservationRecords", &
+               "Conversion error (55).", 1)
+          RETURN       
+       END IF
+       IF (INT(hour_xml) < 10) hour_str_xml = "0" // TRIM(hour_str_xml)
+
+       min_xml= (hour_xml-INT(hour_xml))*60.0_bp
+       CALL toString(INT(min_xml), min_str_xml, error)
+       IF (error) THEN
+          CALL errorMessage("Observation / getObservationRecords", &
+               "Conversion error (55).", 1)
+          RETURN       
+       END IF
+       IF (INT(min_xml) < 10) min_str_xml = "0" // TRIM(min_str_xml)
+
+       sec_xml= (min_xml-INT(min_xml))*60.0_bp
+       CALL toString(sec_xml, sec_str_xml, error, frmt="(F12.9)")
+       IF (INT(sec_xml) < 10.0_bp) sec_str_xml = "0" // TRIM(sec_str_xml)
+       IF (error) THEN
+          CALL errorMessage("Observation / getObservationRecords", &
+               "Conversion error (55).", 1)
+          RETURN       
+       END IF
+
+       WRITE(time_xml,"(I4,A1,A2,A1,A2,A1,A2,A1,A2,A1,A8,A1)")year, "-", month_str, "-", &
+            day_str_xml,"T",hour_str_xml,":",min_str_xml,":",sec_str_xml(1:8),"Z"
+
+       IF (SQRT(this%covariance(2,2))*SQRT(this%covariance(3,3)) > EPSILON(correlation)) THEN
+          correlation = this%covariance(2,3) / &
+               (SQRT(this%covariance(2,2))*SQRT(this%covariance(3,3)))
+       ELSE
+          correlation = 0.0_bp
+       END IF
+       WRITE(records(1),"(A7,1X,A3,1X,A26,1X,F12.8,1X,F12.8,1X,F12.9,1X,F12.9,1X,F12.9,1X,A5,1X,F12.9,1X,A2,1X,F12.9,1X,F12.9,1X,F12.9)", iostat=err) &
+            designation(1:7), obsy_code, time_xml, ra/rad_deg, dec/rad_deg, SQRT(this%covariance(2,2))/rad_deg, &
+            SQRT(this%covariance(3,3))/rad_deg, correlation, mag_str(1:5), this%mag_unc, this%filter, this%s2n, velocity_xml(2), velocity_xml(3)
+       IF (err /= 0) THEN
+          error = .TRUE.
+          CALL errorMessage("Observation / getObservationRecords", &
+               "Could not write output string.", 1)
+          DEALLOCATE(records, stat=err)
+          RETURN
+       END IF
+       
     CASE ("mpc","sor")
 
        IF (LEN_TRIM(number_) > 5) THEN
