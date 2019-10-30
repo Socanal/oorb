@@ -70,6 +70,7 @@ MODULE Observation_cl
      PRIVATE
      CHARACTER(len=DESIGNATION_LEN) :: number
      CHARACTER(len=DESIGNATION_LEN) :: designation
+     CHARACTER(len=10)              :: type
      LOGICAL                        :: discovery
      CHARACTER(len=1)               :: note1, note2, mode
      CHARACTER(len=2)               :: filter
@@ -197,7 +198,7 @@ CONTAINS
   !! Returns error.
   !!
 
-  SUBROUTINE NEW_Obs(this, number, designation, discovery, note1, &
+  SUBROUTINE NEW_Obs(this, number, designation, type, discovery, note1, &
        note2, obs_scoord, covariance, obs_mask, mag, filter, obsy, &
        obsy_ccoord, mag_unc, s2n, satellite_ccoord, coord_unit, &
        secret_name)
@@ -206,6 +207,7 @@ CONTAINS
     TYPE (Observation), INTENT(inout)                 :: this
     CHARACTER(len=*), INTENT(in)                      :: number
     CHARACTER(len=*), INTENT(in)                      :: designation
+    CHARACTER(len=*), INTENT(in), OPTIONAL            :: type
     LOGICAL, INTENT(in)                               :: discovery
     CHARACTER(len=*), INTENT(in)                      :: note1, note2
     CHARACTER(len=*), INTENT(in)                      :: filter
@@ -237,6 +239,8 @@ CONTAINS
             "Too many characters in designation:" // TRIM(designation), 1)
        RETURN
     END IF
+
+    this%type              = type
     this%discovery         = discovery
     this%note1             = note1
     this%note2             = note2
