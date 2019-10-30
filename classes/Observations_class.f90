@@ -267,6 +267,11 @@ MODULE Observations_cl
      MODULE PROCEDURE setNumber_Obss_int
   END INTERFACE setNumber
 
+  INTERFACE writeObservationFile
+     MODULE PROCEDURE writeObservationFile_default
+     MODULE PROCEDURE writeObservationFile_xml
+  END INTERFACE writeObservationFile
+
 CONTAINS
 
 
@@ -3326,7 +3331,6 @@ CONTAINS
           END IF
 
           IF (xml_input%obsType(i) == 'streak') THEN
-             WRITE(*,*) xml_input%coordinates(i,2),xml_input%coordinates(i,3)
              coordinates = 0_bp
              coordinates(2) = xml_input%coordinates(i,2)*rad_deg
              coordinates(3) = xml_input%coordinates(i,3)*rad_deg
@@ -6282,7 +6286,7 @@ CONTAINS
   !!
   !! Returns error.
   !!
-  SUBROUTINE writeObservationFile(this, lu, frmt, number)
+  SUBROUTINE writeObservationFile_default(this, lu, frmt, number)
 
     IMPLICIT NONE
     TYPE (Observations), INTENT(in) :: this
@@ -6378,7 +6382,91 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE writeObservationFile
+  END SUBROUTINE writeObservationFile_default
+
+  
+  SUBROUTINE writeObservationFile_xml(this, obs_fname, number)
+
+    IMPLICIT NONE
+
+    TYPE (Observations), INTENT(in) :: this
+    CHARACTER(len=*), INTENT(in) :: obs_fname        
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: number
+
+    REAL(bp), DIMENSION(3)          :: velocity
+    CHARACTER(len=OBS_RECORD_LEN), DIMENSION(:), POINTER :: &
+         records => NULL()
+    INTEGER                         :: i, err
+    CHARACTER(len=26)               :: obsTime
+    CHARACTER(len=12)               :: ra, dec, rmsMag, logSNR, rmsRA, rmsDec, rmsCorr, dRA, dDec
+    CHARACTER(len=7)                :: permID
+    CHARACTER(len=5)                :: mag
+    CHARACTER(len=3)                :: stn
+    CHARACTER(len=2)                :: filter
+
+    TYPE(Node), POINTER :: doc_tmp, doc_root, np, obsBlock, obsContext, &
+         subContext, obsData, optical
+
+    IF (.NOT. this%is_initialized) THEN
+       error = .TRUE.
+       CALL errorMessage("Observations / writeObservationFile", &
+            "Object has not yet been initialized.", 1)
+       RETURN
+    END IF
+
+    IF (this%nobs == 0) THEN
+       error = .TRUE.
+       CALL errorMessage("Observations / writeObservationFile", &
+            "Object does not contain any observations.", 1)
+       RETURN
+    END IF
+
+    !Initialize xml document 
+
+    doc_tmp => createDocument(getImplementation(), "", "ades", null())
+    doc_root => getDocumentElement(doc_tmp)
+
+    obsBlock => addElement(doc_tmp, doc_root, "obsBlock")
+    obsData => addElement(doc_tmp, obsBlock, "obsData")
+
+
+    DO i=1,this%nobs
+
+       records =>  getObservationRecords(this%obs_arr(this%ind(i)), "xml")
+       IF (error) THEN
+          CALL errorMessage("Observations / writeObservationFile", &
+               "TRACE BACK 5", 1)
+          DEALLOCATE(records, stat=err)
+          RETURN
+       END IF
+
+       READ(records, "(A7,1X,A3,1X,A26,1X,A12,1X,A12,1X,A12,1X,A12,1X,A12,1X,A5,1X,A12,1X,A2,1X,A12,1X,A12,1X,A12)") &
+            permID, stn, obsTime, ra, dec, rmsRA, rmsDec, rmsCorr, mag, rmsMag, filter, logSNR, dRA, dDec
+
+       optical => addElement(doc_tmp, obsData, "optical")
+       CALL addDataElement(doc_tmp, optical, "permID", permID)
+       CALL addDataElement(doc_tmp, optical, "stn", stn)
+       CALL addDataElement(doc_tmp, optical, "obsTime", obsTime)
+       CALL addDataElement(doc_tmp, optical, "ra", ra)
+       CALL addDataElement(doc_tmp, optical, "dec", dec)
+       CALL addDataElement(doc_tmp, optical, "dotRA", dra)
+       CALL addDataElement(doc_tmp, optical, "dotDec", dDec)
+       CALL addDataElement(doc_tmp, optical, "rmsRA", rmsRA)
+       CALL addDataElement(doc_tmp, optical, "rmsDec", rmsDec)
+       CALL addDataElement(doc_tmp, optical, "rmsCorr", rmsCorr)
+       CALL addDataElement(doc_tmp, optical, "mag", mag)
+       CALL addDataElement(doc_tmp, optical, "rmsMag", rmsMag)
+       CALL addDataElement(doc_tmp, optical, "band", filter)
+       CALL addDataElement(doc_tmp, optical, "logSNR", logSNR)
+
+
+    END DO
+
+    CALL setParameter(getDomConfig(doc_tmp), "invalid-pretty-print", .TRUE.)
+    CALL serialize(doc_tmp, obs_fname)
+    CALL destroy(doc_tmp)
+
+  END SUBROUTINE writeObservationFile_xml
 
 
   ! Collapsing Gaia transit into a single normal point
@@ -6900,6 +6988,55 @@ END SUBROUTINE collapseGaiaVel
        
     END IF
   END SUBROUTINE characters_reader
+  
+
+
+
+
+  SUBROUTINE addDataElement(myDoc, parent, tag, val)
+    !
+    ! adds element tag to parent with text val
+    ! This returns nothing since all data elements
+    ! are terminals in ades
+    !
+    ! However, it needs the document to make a new
+    ! element and sets the namespace to "" since FoX
+    ! requires all documents to have namespaces
+    !
+
+    TYPE(Node), POINTER :: myDoc, parent, temp
+    CHARACTER(len=*) :: tag
+    CHARACTER(len=*) :: val
+
+    temp => createElementNS(myDoc, "", tag)
+    CALL setTextContent(temp, val)
+    temp => appendChild(parent, temp)
+
+  END SUBROUTINE addDataElement
+
+
+
+
+
+  FUNCTION addElement(myDoc, parent, tag) result (el)
+    !
+    ! adds element tag to parent and returns the
+    ! added element
+    !
+    ! However, it needs the document to make a new
+    ! element and sets the namespace to "" since FoX
+    ! requires all documents to have namespaces
+    !
+
+    TYPE(Node), POINTER :: myDoc, parent, el
+    CHARACTER(len=*) :: tag
+
+    TYPE(Node), pointer :: temp
+
+    el => createElementNS(myDoc, "", tag)
+    temp => appendChild(parent, el)
+
+  END FUNCTION addElement
 !
 
 
