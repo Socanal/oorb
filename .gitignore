@@ -2,6 +2,8 @@
 *.mod
 *~
 *.so
+fox/
+Results/
 python/build/
 main/oorb
 main/ephemeris_linking
